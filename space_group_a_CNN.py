@@ -44,6 +44,7 @@ from keras.models import Model
 from keras.models import Sequential
 from keras.callbacks import ReduceLROnPlateau
 from keras.callbacks import EarlyStopping
+from keras.layers import GlobalAveragePooling1D
 
 import tensorflow as tf
 
@@ -188,7 +189,7 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         filter_size = 2
         kernel_size = 10
 
-        enc = OneHotEncoder(sparse=False)
+        enc = OneHotEncoder()
       
         train_dim = train_combine.reshape(train_combine.shape[0],1200,1)
         train_y = np.concatenate((y_th,exp_train_y))
@@ -201,7 +202,7 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         model.add(K.layers.Conv1D(32, 8,strides=8, padding='same',input_shape=(1200,1), activation='relu'))
         model.add(K.layers.Conv1D(32, 5,strides=5, padding='same', activation='relu'))
         model.add(K.layers.Conv1D(32, 3,strides=3, padding='same', activation='relu'))
-        model.add(K.layers.pooling.GlobalAveragePooling1D())
+        model.add(GlobalAveragePooling1D())
         model.add(K.layers.Dense(n_classes, activation='softmax'))
         
         #Define optimizer        
@@ -225,9 +226,9 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         test_y = enc.fit_transform(y_exp.reshape(-1,1))[test]
         
         # Fit model
-        hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, nb_epoch=100,
+        hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, epochs=100,
                          verbose=1, validation_data=(test_x, test_y))
-#        hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, nb_epoch=100,
+#        hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, epochs=100,
 #                                     verbose=1, validation_data=(test_x, test_y), callbacks = [early_stop])
 #        
         #Compute model predictions
