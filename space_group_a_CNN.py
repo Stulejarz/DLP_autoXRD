@@ -49,7 +49,7 @@ import tensorflow as tf
 
 # Clear Keras and TF session, if run previously
 K.backend.clear_session()
-tf.reset_default_graph()
+#tf.reset_default_graph()
 
 # Training Parameters
 
