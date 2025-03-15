@@ -61,28 +61,30 @@ def get_cam(model_name, elements, spectra):
 # Plot CLass Activation Map of both an individual CAM and an average CAM
 def plot_cam(cam_output, title, *args):
     
-    #*arg is here a vector with the actual spectra
-    x = np.linspace(10,69.96,cam_output.shape[0])
+    if cam_output.size == 0:  # Check if cam_output is empty
+        print("Error: cam_output is empty. Unable to plot.")
+        return  # Exit the function to prevent further errors
+
+    x = np.linspace(10, 69.96, cam_output.shape[0])
     y = cam_output
-    y2=[]
+    y2 = []
     for arg in args:
         y2.append(arg)
     if len(y2) != 0:
-        y2=np.array(y2).reshape(1200,)
+        y2 = np.array(y2).reshape(1200,)
     
-    fig, (ax,ax2) = plt.subplots(nrows=2, sharex=True)
+    fig, (ax, ax2) = plt.subplots(nrows=2, sharex=True)
     
-    extent = [x[0]-(x[1]-x[0])/2., x[-1]+(x[1]-x[0])/2.,0,1]
-    ax.imshow(y[np.newaxis,:], cmap="plasma", aspect="auto", extent=extent, interpolation='gaussian')
+    extent = [x[0] - (x[1] - x[0]) / 2., x[-1] + (x[1] - x[0]) / 2., 0, 1]
+    ax.imshow(y[np.newaxis, :], cmap="plasma", aspect="auto", extent=extent, interpolation='gaussian')
     ax.set_yticks([])
     ax.set_xlim(extent[0], extent[1])
     
     if len(y2) != 0:
-        ax2.plot(np.linspace(10,69.96,1200),y2)
+        ax2.plot(np.linspace(10, 69.96, 1200), y2)
         ax2.set_xlabel(r"$2 \theta$ (Degrees)")
         ax2.set_title("Pattern")
         
-    
     fig.suptitle(title, fontsize=16)
     
         
@@ -101,7 +103,7 @@ def find_incorrects(ground_truth,predictions_ord):
         #Join predictions and ground truth and convert to dataframe
         comparision_array=np.concatenate([truth,temp],axis=1)
         comparision_df=pd.DataFrame(data=comparision_array[:,1:], index=comparision_array[:,0], columns=['Truth','Prediction'])
-        comparision_df['Model']='keras_model'+str(k)+'.h5'
+        comparision_df['Model']='keras_model'+str(k)+'.keras'
         
         #Find incorrects and save dataframe
         incorrect_df=comparision_df[comparision_df.Truth != comparision_df.Prediction]

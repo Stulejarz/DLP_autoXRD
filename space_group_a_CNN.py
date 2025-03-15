@@ -24,7 +24,6 @@ in the README.rst file, in the GitHub repository.
 ################################################################# 
 #Libraries and dependencies
 #################################################################
-
 # Loads series of functions for preprocessing and data augmentation
 from autoXRD import *
 # Loads CAMs visualizations for a-CNN
@@ -37,6 +36,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn import metrics
 from sklearn.model_selection import KFold
+from sklearn.metrics import precision_score
 
 # Neural networks uses Keran with TF background
 import keras as K
@@ -45,8 +45,10 @@ from keras.models import Sequential
 from keras.callbacks import ReduceLROnPlateau
 from keras.callbacks import EarlyStopping
 from keras.layers import GlobalAveragePooling1D
+from keras.models import load_model
 
 import tensorflow as tf
+from tensorflow import keras
 
 # Clear Keras and TF session, if run previously
 K.backend.clear_session()
@@ -194,7 +196,7 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         train_dim = train_combine.reshape(train_combine.shape[0],1200,1)
         train_y = np.concatenate((y_th,exp_train_y))
         trains_y.append(train_y)
-        train_y_hot = enc.fit_transform(train_y.reshape(-1,1))
+        train_y_hot = enc.fit_transform(train_y.reshape(-1,1)).toarray()  # Convert to dense array
         
         # Define network structure
         model = Sequential()
@@ -223,14 +225,47 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         # Define test data
         test_x = X_exp[test]
         test_x = test_x.reshape(test_x.shape[0],1200,1)
-        test_y = enc.fit_transform(y_exp.reshape(-1,1))[test]
-        
+        test_y = enc.fit_transform(y_exp.reshape(-1,1)).toarray()[test]
+
+        if isinstance(train_y_hot, tf.sparse.SparseTensor):
+            train_y_hot = tf.sparse.to_dense(train_y_hot)
+
         # Fit model
         hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, epochs=100,
                          verbose=1, validation_data=(test_x, test_y))
 #        hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, epochs=100,
 #                                     verbose=1, validation_data=(test_x, test_y), callbacks = [early_stop])
-#        
+
+        #print(hist.history.keys())
+        
+        plt.figure(figsize=(12, 6))
+
+        # Loss plot
+        plt.subplot(1, 2, 1)
+        plt.plot(hist.history['loss'], label='Training Loss')
+        plt.plot(hist.history['val_loss'], label='Validation Loss')
+        plt.title('Loss over Epochs')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+
+        # Accuracy plot
+        plt.subplot(1, 2, 2)
+        plt.plot(hist.history['categorical_accuracy'], label='Training Accuracy')
+        plt.plot(hist.history['val_categorical_accuracy'], label='Validation Accuracy')
+        plt.title('Accuracy over Epochs')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend()
+
+        plt.tight_layout()
+
+        # Ensure the plot is displayed
+        dirname2 = "/content/drive/MyDrive/DLP/DLP_autoXRD/plots"
+
+        plot_filename = os.path.join(dirname2, f'training_validation_plots_{k}.png')
+        plt.savefig(plot_filename)
+
         #Compute model predictions
         prediction=model.predict(test_x)
  
@@ -242,8 +277,8 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         accuracy_exp[k] = metrics.accuracy_score(y_exp[test], prediction_ord) 
         accuracy_exp_r1[k] = metrics.recall_score(y_exp[test], prediction_ord, average='macro') 
         accuracy_exp_r2[k] = metrics.recall_score(y_exp[test], prediction_ord, average='micro')
-        accuracy_exp_p1[k] = metrics.precision_score(y_exp[test], prediction_ord, average='macro') 
-        accuracy_exp_p2[k] = metrics.precision_score(y_exp[test], prediction_ord, average='micro')
+        accuracy_exp_p1[k] = metrics.precision_score(y_exp[test], prediction_ord, average='macro', zero_division=1) 
+        accuracy_exp_p2[k] = metrics.precision_score(y_exp[test], prediction_ord, average='micro', zero_division=1)
         f1[k]=metrics.f1_score(y_exp[test], prediction_ord, average='micro')
         f1_m[k]=metrics.f1_score(y_exp[test], prediction_ord, average='macro')
         
@@ -258,7 +293,8 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         logs.append(log)
        
         #Save models on current folder with names subscripts 0 to 4
-        model.save(os.path.join(dirname, 'keras_model')+str(k)+'.h5')
+        #model.save(os.path.join(dirname, 'keras_model')+str(k)+'.h5')
+        model.save(os.path.join(dirname, 'keras_model') + str(k) + '.keras') 
 
 #
 accuracy = np.array(accuracy)        
@@ -273,6 +309,13 @@ print ('Mean Cross-val accuracy', np.mean(accuracy[:,1]))
 # Compute correctly classified and incorrectly classified cases
 corrects, incorrects = find_incorrects(ground_truth,predictions_ord)
 
+def get_cam(model_path, trains, X_exp):
+    # Load the model using keras.models.load_model
+    model = keras.models.load_model(model_path, compile=False)  
+
+    # Compile the loaded model, ensure it's ready for use
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])  
+
 # Get dataframe of all incorrects and dataframe of all corrects
 corrects_df = pd.concat([r for r in corrects], ignore_index=False, axis=0)
 incorrects_df = pd.concat([r for r in incorrects], ignore_index=False, axis=0)
@@ -281,23 +324,24 @@ incorrects_df = pd.concat([r for r in incorrects], ignore_index=False, axis=0)
 # Trains refers to the elements in X_exp used for training
 # Choose the model in cross validation as output, in this case we plot number 5
 
-cam_outputs=get_cam('keras_model4.h5', trains[4], X_exp)
+cam_outputs=get_cam('keras_model4.keras', trains[4], X_exp)
+print(f"this is the cam_outputs",cam_outputs)
 cam_df=pd.DataFrame(cam_outputs)
 cam_df=cam_df.iloc[1:]
 cam_df['Label']=y_exp[trains[4]]
 
 # CAM with all augmented training data
 rng=range(0,7000)
-cam_outputs2=get_cam('keras_model4.h5', rng, train_combine)
+cam_outputs2=get_cam('keras_model4.keras', rng, train_combine)
 cam_df2=pd.DataFrame(cam_outputs2)
 cam_df2=cam_df2.iloc[1:]
 cam_df2['Label']=train_y
 
 # Now we focus on the incorrectly labelled cam's
-incorrects_filtered=incorrects_df[incorrects_df.Model=='keras_model4.h5']
+incorrects_filtered=incorrects_df[incorrects_df.Model=='keras_model4.keras']
 
 # Get CAM of incorrectly classified cases
-cam_inc=get_cam('keras_model4.h5', [int(element) for element in incorrects_filtered.index], X_exp)
+cam_inc=get_cam('keras_model4.keras', [int(element) for element in incorrects_filtered.index], X_exp)
 cam_inc=pd.DataFrame(cam_inc)
 cam_inc=cam_inc.iloc[1:]    
 
@@ -310,12 +354,14 @@ cam_filtered=cam_df[cam_df.Label==6]
 means_6=cam_filtered.mean()
 means_6=means_6.iloc[:-1]
 
+print(f"this is the input to the plot_cam",means_6) #check if the input is empty
+
 #Plot the average class map for class 6
 plot_cam(means_6,'Average CAM for Class 6, trained model4.h5')
 
 #Plot correctly classified CAMs and patterns, no need to change this
-corrects_filtered=corrects_df[corrects_df.Model=='keras_model4.h5']
-cam_cor=get_cam('keras_model4.h5', [int(element) for element in corrects_filtered.index], X_exp)
+corrects_filtered=corrects_df[corrects_df.Model=='keras_model4.keras']
+cam_cor=get_cam('keras_model4.keras', [int(element) for element in corrects_filtered.index], X_exp)
 cam_cor=pd.DataFrame(cam_cor)
 cam_cor=cam_cor.iloc[1:]
 
