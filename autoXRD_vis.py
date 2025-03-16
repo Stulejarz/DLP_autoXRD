@@ -24,21 +24,32 @@ from keras.models import load_model
 import numpy as np  
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
 
 # Function to extract CAM of a certain model, subset of test elements, and spectra array with all experimental data (non-augmented)
 def get_cam(model_name, elements, spectra):
-    
-    model = load_model(model_name)        
+    model = load_model(model_name)
+
+    # Get the input layer explicitly (as before)
+    input_layer = model.get_layer(index=0)  
+
+    # Dummy input with expected shape (as before)
+    dummy_input = np.zeros((1, spectra[elements].shape[1], 1))  
+    _ = model(dummy_input)  
+
     gap_weights = model.layers[-1].get_weights()[0]
-    cam_model = Model(inputs=model.input, 
+
+    # Create the cam_model (as before)
+    cam_model = Model(inputs=input_layer.input, 
                     outputs=(model.layers[-3].output, model.layers[-1].output))
     
-    features, results = cam_model.predict(spectra[elements].reshape(spectra[elements].shape[0],1200,1))
-    cam_outputs=np.zeros([10,1])
-    
-# Extract Class Activation MAPS
-    for idx,element in enumerate(elements):  
-        
+    # This is the key change: move cam_model.predict outside the loop
+    features, results = cam_model.predict(spectra[elements].reshape(spectra[elements].shape[0], 1200, 1))
+
+    cam_outputs = np.zeros([10, 1])
+
+    # Extract Class Activation MAPS
+    for idx, element in enumerate(elements):
         # get the feature map of the test image
         features_for_one_img = features[idx, :, :]
             
@@ -54,7 +65,7 @@ def get_cam(model_name, elements, spectra):
         # create the class activation map
         cam_output = np.dot(cam_features, cam_weights)
         cam_output = abs(cam_output)
-        cam_outputs=np.append(cam_outputs, cam_output.reshape(cam_output.shape[0],1), axis=1)
+        cam_outputs = np.append(cam_outputs, cam_output.reshape(cam_output.shape[0], 1), axis=1)
         
     return cam_outputs.T
 
@@ -76,17 +87,23 @@ def plot_cam(cam_output, title, *args):
     fig, (ax, ax2) = plt.subplots(nrows=2, sharex=True)
     
     extent = [x[0] - (x[1] - x[0]) / 2., x[-1] + (x[1] - x[0]) / 2., 0, 1]
-    ax.imshow(y[np.newaxis, :], cmap="plasma", aspect="auto", extent=extent, interpolation='gaussian')
+    ax.imshow(y.to_numpy()[np.newaxis, :], cmap="plasma", aspect="auto", extent=extent, interpolation='gaussian')
     ax.set_yticks([])
     ax.set_xlim(extent[0], extent[1])
-    
     if len(y2) != 0:
         ax2.plot(np.linspace(10, 69.96, 1200), y2)
         ax2.set_xlabel(r"$2 \theta$ (Degrees)")
         ax2.set_title("Pattern")
         
     fig.suptitle(title, fontsize=16)
+
+    dirname3 = "/content/drive/MyDrive/DLP/DLP_autoXRD/plots"
+
+    file_path = os.path.join(dirname3, title + ".png")  # Customize file name
+    plt.savefig(file_path)
     
+    # Optional: Close the figure to release resources
+    plt.close()
         
 #Find corrects and incorrects in all models ran, and compare them to ground-truth
 def find_incorrects(ground_truth,predictions_ord):

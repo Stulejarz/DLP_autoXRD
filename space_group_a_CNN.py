@@ -20,7 +20,6 @@ All code is under Apache 2.0 license, please cite any use of the code as explain
 in the README.rst file, in the GitHub repository.
 
 """
-
 ################################################################# 
 #Libraries and dependencies
 #################################################################
@@ -231,7 +230,7 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
             train_y_hot = tf.sparse.to_dense(train_y_hot)
 
         # Fit model
-        hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, epochs=100,
+        hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, epochs=1,
                          verbose=1, validation_data=(test_x, test_y))
 #        hist = model.fit(train_dim, train_y_hot, batch_size=BATCH_SIZE, epochs=100,
 #                                     verbose=1, validation_data=(test_x, test_y), callbacks = [early_stop])
@@ -309,12 +308,12 @@ print ('Mean Cross-val accuracy', np.mean(accuracy[:,1]))
 # Compute correctly classified and incorrectly classified cases
 corrects, incorrects = find_incorrects(ground_truth,predictions_ord)
 
-def get_cam(model_path, trains, X_exp):
+#def get_cam(model_path, trains, X_exp):
     # Load the model using keras.models.load_model
-    model = keras.models.load_model(model_path, compile=False)  
+#    model = keras.models.load_model(model_path, compile=False)  
 
     # Compile the loaded model, ensure it's ready for use
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])  
+#    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])  
 
 # Get dataframe of all incorrects and dataframe of all corrects
 corrects_df = pd.concat([r for r in corrects], ignore_index=False, axis=0)
@@ -325,7 +324,7 @@ incorrects_df = pd.concat([r for r in incorrects], ignore_index=False, axis=0)
 # Choose the model in cross validation as output, in this case we plot number 5
 
 cam_outputs=get_cam('keras_model4.keras', trains[4], X_exp)
-print(f"this is the cam_outputs",cam_outputs)
+#print(f"this is the cam_outputs",cam_outputs)
 cam_df=pd.DataFrame(cam_outputs)
 cam_df=cam_df.iloc[1:]
 cam_df['Label']=y_exp[trains[4]]
@@ -354,7 +353,7 @@ cam_filtered=cam_df[cam_df.Label==6]
 means_6=cam_filtered.mean()
 means_6=means_6.iloc[:-1]
 
-print(f"this is the input to the plot_cam",means_6) #check if the input is empty
+#print(f"this is the input to the plot_cam",means_6) #check if the input is empty
 
 #Plot the average class map for class 6
 plot_cam(means_6,'Average CAM for Class 6, trained model4.h5')
