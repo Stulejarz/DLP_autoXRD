@@ -132,3 +132,46 @@ def find_incorrects(ground_truth,predictions_ord):
     
     #Return list of dataframe with comparision between resuls, and list of dataframes of incorrects
     return corrects, incorrects
+
+def generate_cam(model, image, class_index):
+  """Generates a class activation map for a given image and class index.
+
+  Args:
+    model: The trained Keras model.
+    image: The input image as a NumPy array.
+    class_index: The index of the target class.
+
+  Returns:
+    A NumPy array representing the class activation map.
+  """
+
+  # Get the output of the last convolutional layer
+  last_conv_layer = model.get_layer('last_conv_layer')  # Replace with the actual name
+  last_conv_layer_model = tf.keras.Model(model.inputs, last_conv_layer.output)
+
+  # Get the weights of the classification layer
+  classifier_layer = model.get_layer('classifier')  # Replace with the actual name
+  classifier_weights = classifier_layer.get_weights()[0]
+
+  # Generate the CAM
+  with tf.GradientTape() as tape:
+    last_conv_layer_output = last_conv_layer_model(np.expand_dims(image, axis=0))
+    tape.watch(last_conv_layer_output)
+    preds = model(np.expand_dims(image, axis=0))
+    top_class_channel = preds[:, class_index]
+
+  grads = tape.gradient(top_class_channel, last_conv_layer_output)
+  pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+
+  heatmap = tf.reduce_mean(tf.multiply(pooled_grads, last_conv_layer_output), axis=-1)
+  heatmap = np.maximum(heatmap, 0)
+  heatmap /= np.max(heatmap)
+
+  plt.figure()  # Create a new figure to avoid overwriting previous plots
+  plt.imshow(image)
+  plt.imshow(cam, alpha=0.5, cmap='jet')
+  plt.axis('off')  # Remove axes for a cleaner image
+  plt.savefig(output_path)
+  plt.close()
+
+  return heatmap.numpy()[0]

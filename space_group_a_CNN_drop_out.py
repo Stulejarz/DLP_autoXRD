@@ -201,8 +201,11 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         model = Sequential()
 
         model.add(K.layers.Conv1D(32, 8,strides=8, padding='same',input_shape=(1200,1), activation='relu'))
+        model.add(K.layers.Dropout(0.25))  # Dropout after the first convolutional layer
         model.add(K.layers.Conv1D(32, 5,strides=5, padding='same', activation='relu'))
+        model.add(K.layers.Dropout(0.25))  # Dropout after the second convolutional layer
         model.add(K.layers.Conv1D(32, 3,strides=3, padding='same', activation='relu'))
+        model.add(K.layers.Dropout(0.25))  # Dropout after the third convolutional layer
         model.add(GlobalAveragePooling1D())
         model.add(K.layers.Dense(n_classes, activation='softmax'))
         
@@ -262,7 +265,7 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         # Ensure the plot is displayed
         dirname2 = "/content/drive/MyDrive/DLP/DLP_autoXRD/plots"
 
-        plot_filename = os.path.join(dirname2, f'training_validation_plots_{k}.png')
+        plot_filename = os.path.join(dirname2, f'training_validation_plots_{k}_dropout.png')
         plt.savefig(plot_filename)
 
         #Compute model predictions
@@ -293,7 +296,7 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
        
         #Save models on current folder with names subscripts 0 to 4
         #model.save(os.path.join(dirname, 'keras_model')+str(k)+'.h5')
-        model.save(os.path.join(dirname, 'keras_model') + str(k) + '.keras') 
+        model.save(os.path.join(dirname, 'keras_model_dropout') + str(k) + '.keras') 
 
 #
 accuracy = np.array(accuracy)        
@@ -356,7 +359,7 @@ means_6=means_6.iloc[:-1]
 #print(f"this is the input to the plot_cam",means_6) #check if the input is empty
 
 #Plot the average class map for class 6
-plot_cam(means_6,'Average CAM for Class 6, trained model4.h5')
+plot_cam(means_6,'Average CAM for Class 6 with dropout, trained model4.keras')
 
 #Plot correctly classified CAMs and patterns, no need to change this
 corrects_filtered=corrects_df[corrects_df.Model=='keras_model4.keras']
@@ -365,7 +368,7 @@ cam_cor=pd.DataFrame(cam_cor)
 cam_cor=cam_cor.iloc[1:]
 
 #Plot a single correctly classified pattern
-plot_cam(cam_cor.iloc[-1,:],'CAM for single pattern: true class 6, predicted is 6', X_exp[int(corrects_filtered.index[-1])])
+plot_cam(cam_cor.iloc[-1,:],'CAM for single pattern: true class 6 with dropout, predicted is 6', X_exp[int(corrects_filtered.index[-1])])
 
 # Note that results may vary due to NN variability during training, make sure you are plotting
 # correct and incorrect cases clearly

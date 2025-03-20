@@ -48,6 +48,7 @@ from keras.models import load_model
 
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import regularizers
 
 # Clear Keras and TF session, if run previously
 K.backend.clear_session()
@@ -200,9 +201,9 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         # Define network structure
         model = Sequential()
 
-        model.add(K.layers.Conv1D(32, 8,strides=8, padding='same',input_shape=(1200,1), activation='relu'))
-        model.add(K.layers.Conv1D(32, 5,strides=5, padding='same', activation='relu'))
-        model.add(K.layers.Conv1D(32, 3,strides=3, padding='same', activation='relu'))
+        model.add(K.layers.Conv1D(32, 8,strides=8, padding='same',input_shape=(1200,1), activation='relu', kernel_regularizer=regularizers.l1(0.01)))
+        model.add(K.layers.Conv1D(32, 5,strides=5, padding='same', activation='relu',kernel_regularizer=regularizers.l1(0.01)))
+        model.add(K.layers.Conv1D(32, 3,strides=3, padding='same', activation='relu',kernel_regularizer=regularizers.l1(0.01)))
         model.add(GlobalAveragePooling1D())
         model.add(K.layers.Dense(n_classes, activation='softmax'))
         
@@ -262,7 +263,7 @@ for k, (train, test) in enumerate(k_fold.split(X_exp, y_exp)):
         # Ensure the plot is displayed
         dirname2 = "/content/drive/MyDrive/DLP/DLP_autoXRD/plots"
 
-        plot_filename = os.path.join(dirname2, f'training_validation_plots_{k}.png')
+        plot_filename = os.path.join(dirname2, f'training_validation_plots_{k}_L1.png')
         plt.savefig(plot_filename)
 
         #Compute model predictions
@@ -356,7 +357,7 @@ means_6=means_6.iloc[:-1]
 #print(f"this is the input to the plot_cam",means_6) #check if the input is empty
 
 #Plot the average class map for class 6
-plot_cam(means_6,'Average CAM for Class 6, trained model4.h5')
+plot_cam(means_6,'Average CAM for Class 6 with L1, trained model4.kears')
 
 #Plot correctly classified CAMs and patterns, no need to change this
 corrects_filtered=corrects_df[corrects_df.Model=='keras_model4.keras']
@@ -365,7 +366,7 @@ cam_cor=pd.DataFrame(cam_cor)
 cam_cor=cam_cor.iloc[1:]
 
 #Plot a single correctly classified pattern
-plot_cam(cam_cor.iloc[-1,:],'CAM for single pattern: true class 6, predicted is 6', X_exp[int(corrects_filtered.index[-1])])
+plot_cam(cam_cor.iloc[-1,:],'CAM for single pattern: true class 6 with L1, predicted is 6', X_exp[int(corrects_filtered.index[-1])])
 
 # Note that results may vary due to NN variability during training, make sure you are plotting
 # correct and incorrect cases clearly
